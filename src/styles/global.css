@@ -1,0 +1,41 @@
+/* src/styles/global.css */
+/* Design tokens and reset shared across all tools */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:      #0c0c0f;
+  --surface: #141418;
+  --border:  #2a2a35;
+  --accent:  #7fff6e;
+  --accent2: #4fc3f7;
+  --text:    #e8e8f0;
+  --muted:   #6b6b80;
+  --danger:  #ff6b6b;
+  --warn:    #ffc864;
+  --mono:    'Space Mono', monospace;
+  --sans:    'DM Sans', sans-serif;
+}
+
+html { color-scheme: dark; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}

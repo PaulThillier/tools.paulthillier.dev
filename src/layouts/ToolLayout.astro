@@ -1,0 +1,245 @@
+---
+// src/layouts/ToolLayout.astro
+// Shared shell for every tool page.
+// Usage:
+//   <ToolLayout title="GLTF Embedder" description="..." back="/tools/gltf-embedder">
+//     <!-- tool-specific HTML goes here -->
+//   </ToolLayout>
+
+interface Props {
+  title:       string;   // <title> and h1
+  description: string;   // meta description
+  icon?:       string;   // 2-3 char label for the logo box, e.g. "3D"
+  category?:   string;   // tag shown next to icon, e.g. "3D / Models"
+}
+
+const { title, description, icon = '///', category } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title} · tools.paulthillier.dev</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonicalURL} />
+
+  <!--
+    Security hardening:
+    - connect-src 'none'  → blocks all fetch/XHR from the page (tools are 100% FileReader-based)
+    - object-src 'none'   → blocks Flash / plugin exploits
+    - form-action 'none'  → no form submissions possible
+    - base-uri 'self'     → prevents base tag injection
+    - Fonts are the only external resource permitted (style-src + font-src)
+  -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none';" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="Referrer-Policy" content="no-referrer" />
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0c0c0f;
+      --surface: #141418;
+      --border:  #2a2a35;
+      --accent:  #7fff6e;
+      --accent2: #4fc3f7;
+      --text:    #e8e8f0;
+      --muted:   #6b6b80;
+      --danger:  #ff6b6b;
+      --warn:    #ffc864;
+      --mono:    'Space Mono', monospace;
+      --sans:    'DM Sans', sans-serif;
+    }
+
+    html { color-scheme: dark; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Subtle grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(127,255,110,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127,255,110,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 40px;
+    }
+    .breadcrumb a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .breadcrumb a:hover { color: var(--accent); }
+    .breadcrumb span { color: var(--border); margin: 0 8px; }
+
+    /* Tool header */
+    .tool-header {
+      margin-bottom: 36px;
+      text-align: center;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 42px; height: 42px;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -1px;
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .tool-desc {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 300;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    /* Security badges */
+    .security-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      padding: 3px 9px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .badge.green {
+      border-color: rgba(127,255,110,0.3);
+      color: var(--accent);
+      background: rgba(127,255,110,0.05);
+    }
+
+    /* Footer */
+    .site-footer {
+      margin-top: 56px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--border);
+      letter-spacing: 0.3px;
+      line-height: 2;
+    }
+    .site-footer a {
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .site-footer a:hover { color: var(--accent); }
+
+    /* Divider before footer */
+    .footer-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 36px 0 0;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <nav class="breadcrumb">
+    <a href="https://paulthillier.dev">paulthillier.dev</a>
+    <span>/</span>
+    <a href="/">tools</a>
+    <span>/</span>
+    {title.toLowerCase().replace(/\s+/g, '-')}
+  </nav>
+
+  <header class="tool-header">
+    <div class="logo-row">
+      <div class="logo-icon">{icon}</div>
+      <h1>{title}</h1>
+    </div>
+    <p class="tool-desc">{description}</p>
+    <div class="security-badges">
+      <span class="badge green">✓ 100% local</span>
+      <span class="badge green">✓ no network</span>
+      <span class="badge green">✓ no server</span>
+      <span class="badge">files never leave browser</span>
+    </div>
+  </header>
+
+  <!-- Tool-specific content slot -->
+  <slot />
+
+  <hr class="footer-divider" />
+
+  <footer class="site-footer">
+    tools.paulthillier.dev · all processing is local · no data leaves your browser<br />
+    <a href="/">← all tools</a> ·
+    <a href="https://paulthillier.dev" target="_blank" rel="noopener noreferrer">portfolio ↗</a> ·
+    <a href="https://github.com/PaulThillier" target="_blank" rel="noopener noreferrer">github ↗</a>
+  </footer>
+
+</div>
+</body>
+</html>
