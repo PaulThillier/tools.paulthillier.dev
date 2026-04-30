@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SVG → ICO · tools.paulthillier.dev</title>
+  <meta name="description" content="Convert SVG files to ICO format — all processing is local, no data leaves your browser." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0c0c0f;
+      --surface: #141418;
+      --border:  #2a2a35;
+      --accent:  #7fff6e;
+      --accent2: #4fc3f7;
+      --text:    #e8e8f0;
+      --muted:   #6b6b80;
+      --danger:  #ff6b6b;
+      --mono:    'Space Mono', monospace;
+      --sans:    'DM Sans', sans-serif;
+    }
+
+    html { color-scheme: dark; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(127,255,110,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127,255,110,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+    }
+
+    .breadcrumb {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 40px;
+    }
+    .breadcrumb a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: var(--accent); }
+    .breadcrumb span { color: var(--border); margin: 0 8px; }
+
+    .tool-header { margin-bottom: 36px; text-align: center; }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .logo-icon {
+      width: 42px; height: 42px;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -1px;
+      flex-shrink: 0;
+    }
+
+    h1 {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .tool-desc {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 300;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+
+    .security-badges {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      padding: 3px 9px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .badge.green {
+      border-color: rgba(127,255,110,0.3);
+      color: var(--accent);
+      background: rgba(127,255,110,0.05);
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--surface);
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(127,255,110,0.04);
+    }
+    .drop-zone input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon {
+      font-family: var(--mono);
+      font-size: 32px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .drop-label {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .drop-label strong { color: var(--accent); }
+
+    /* Size selector */
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      margin-top: 28px;
+    }
+
+    .size-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .size-btn {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .size-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .size-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(127,255,110,0.08);
+    }
+
+    /* Preview */
+    .preview-section {
+      margin-top: 28px;
+      display: none;
+    }
+    .preview-section.visible { display: block; }
+
+    .preview-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 20px;
+      flex-wrap: wrap;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .preview-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .preview-item canvas {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      image-rendering: pixelated;
+    }
+    .preview-item span {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .preview-checkers {
+      background-image:
+        linear-gradient(45deg, #1e1e24 25%, transparent 25%),
+        linear-gradient(-45deg, #1e1e24 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1e1e24 75%),
+        linear-gradient(-45deg, transparent 75%, #1e1e24 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    }
+
+    /* Convert button */
+    .convert-btn {
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .convert-btn:hover { opacity: 0.88; }
+    .convert-btn:active { transform: scale(0.99); }
+    .convert-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Status */
+    .status {
+      margin-top: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      text-align: center;
+      min-height: 18px;
+      color: var(--muted);
+    }
+    .status.ok { color: var(--accent); }
+    .status.err { color: var(--danger); }
+
+    /* Footer */
+    .site-footer {
+      margin-top: 56px;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--border);
+      letter-spacing: 0.3px;
+      line-height: 2;
+    }
+    .site-footer a { color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .site-footer a:hover { color: var(--accent); }
+    .footer-divider { border: none; border-top: 1px solid var(--border); margin: 36px 0 0; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <nav class="breadcrumb">
+    <a href="https://paulthillier.dev">paulthillier.dev</a>
+    <span>/</span>
+    <a href="/">tools</a>
+    <span>/</span>
+    svg-to-ico
+  </nav>
+
+  <header class="tool-header">
+    <div class="logo-row">
+      <div class="logo-icon">ICO</div>
+      <h1>SVG → ICO</h1>
+    </div>
+    <p class="tool-desc">Convert any SVG to a multi-size .ico file. Pick your sizes, preview the output, then download.</p>
+    <div class="security-badges">
+      <span class="badge green">✓ 100% local</span>
+      <span class="badge green">✓ no network</span>
+      <span class="badge green">✓ no server</span>
+      <span class="badge">files never leave browser</span>
+    </div>
+  </header>
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".svg,image/svg+xml" />
+    <div class="drop-icon">⬡</div>
+    <div class="drop-label"><strong>Drop SVG here</strong> or click to browse</div>
+  </div>
+
+  <!-- Size picker -->
+  <div class="section-label">Output sizes (select all you need)</div>
+  <div class="size-grid" id="sizeGrid">
+    <button class="size-btn active" data-size="16">16×16</button>
+    <button class="size-btn active" data-size="24">24×24</button>
+    <button class="size-btn active" data-size="32">32×32</button>
+    <button class="size-btn active" data-size="48">48×48</button>
+    <button class="size-btn" data-size="64">64×64</button>
+    <button class="size-btn" data-size="128">128×128</button>
+    <button class="size-btn" data-size="256">256×256</button>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-section" id="previewSection">
+    <div class="section-label">Preview</div>
+    <div class="preview-row preview-checkers" id="previewRow"></div>
+  </div>
+
+  <!-- Convert -->
+  <button class="convert-btn" id="convertBtn" disabled>Convert & Download .ico</button>
+  <div class="status" id="status"></div>
+
+  <hr class="footer-divider" />
+  <footer class="site-footer">
+    tools.paulthillier.dev · all processing is local · no data leaves your browser<br />
+    <a href="/">← all tools</a> ·
+    <a href="https://paulthillier.dev" target="_blank" rel="noopener noreferrer">portfolio ↗</a> ·
+    <a href="https://github.com/PaulThillier" target="_blank" rel="noopener noreferrer">github ↗</a>
+  </footer>
+</div>
+
+<script>
+  let svgDataURL = null;
+  let svgFileName = 'favicon';
+
+  const dropZone   = document.getElementById('dropZone');
+  const fileInput  = document.getElementById('fileInput');
+  const convertBtn = document.getElementById('convertBtn');
+  const statusEl   = document.getElementById('status');
+  const previewSection = document.getElementById('previewSection');
+  const previewRow = document.getElementById('previewRow');
+  const sizeGrid   = document.getElementById('sizeGrid');
+
+  // Size toggle
+  sizeGrid.addEventListener('click', e => {
+    if (e.target.classList.contains('size-btn')) {
+      e.target.classList.toggle('active');
+    }
+    updatePreview();
+  });
+
+  // Drag & drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  });
+
+  function loadFile(file) {
+    if (!file.type.includes('svg') && !file.name.endsWith('.svg')) {
+      setStatus('Please drop an SVG file.', 'err');
+      return;
+    }
+    svgFileName = file.name.replace(/\.svg$/i, '');
+    const reader = new FileReader();
+    reader.onload = e => {
+      svgDataURL = e.target.result;
+      convertBtn.disabled = false;
+      setStatus('SVG loaded — ' + file.name, 'ok');
+      updatePreview();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function getActiveSizes() {
+    return [...sizeGrid.querySelectorAll('.size-btn.active')]
+      .map(b => parseInt(b.dataset.size))
+      .sort((a, b) => a - b);
+  }
+
+  function renderSVGToCanvas(size) {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(img, 0, 0, size, size);
+        resolve(canvas);
+      };
+      img.onerror = reject;
+      img.src = svgDataURL;
+    });
+  }
+
+  async function updatePreview() {
+    if (!svgDataURL) return;
+    const sizes = getActiveSizes();
+    previewRow.innerHTML = '';
+    for (const size of sizes) {
+      try {
+        const canvas = await renderSVGToCanvas(size);
+        const displaySize = Math.min(size, 64);
+        canvas.style.width  = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        const label = document.createElement('span');
+        label.textContent = size + 'px';
+        item.appendChild(canvas);
+        item.appendChild(label);
+        previewRow.appendChild(item);
+      } catch(e) {}
+    }
+    previewSection.classList.toggle('visible', sizes.length > 0);
+  }
+
+  convertBtn.addEventListener('click', async () => {
+    const sizes = getActiveSizes();
+    if (!sizes.length) { setStatus('Select at least one size.', 'err'); return; }
+    if (!svgDataURL)   { setStatus('No SVG loaded.', 'err'); return; }
+
+    setStatus('Generating…', '');
+    convertBtn.disabled = true;
+
+    try {
+      const frames = await Promise.all(sizes.map(s => renderSVGToCanvas(s)));
+      const icoBuffer = buildICO(frames, sizes);
+      const blob = new Blob([icoBuffer], { type: 'image/x-icon' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = svgFileName + '.ico';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setStatus('✓ Downloaded ' + svgFileName + '.ico (' + sizes.join(', ') + ' px)', 'ok');
+    } catch(e) {
+      setStatus('Error: ' + e.message, 'err');
+    }
+
+    convertBtn.disabled = false;
+  });
+
+  function setStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status ' + (type || '');
+  }
+
+  // --- ICO builder ---
+  // Produces a valid ICO file from an array of canvases.
+  function buildICO(canvases, sizes) {
+    const pngBuffers = canvases.map(c => dataURLtoBytes(c.toDataURL('image/png')));
+    const count = sizes.length;
+
+    // ICO header: 6 bytes
+    // ICONDIRENTRY per image: 16 bytes each
+    // Then raw PNG data
+
+    const headerSize = 6 + 16 * count;
+    let totalSize = headerSize;
+    pngBuffers.forEach(b => totalSize += b.length);
+
+    const buf = new ArrayBuffer(totalSize);
+    const view = new DataView(buf);
+
+    // Header
+    view.setUint16(0, 0, true);      // reserved
+    view.setUint16(2, 1, true);      // type: 1 = ICO
+    view.setUint16(4, count, true);  // image count
+
+    let offset = headerSize;
+
+    for (let i = 0; i < count; i++) {
+      const size = sizes[i];
+      const pngLen = pngBuffers[i].length;
+      const entry = 6 + i * 16;
+
+      view.setUint8(entry + 0,  size >= 256 ? 0 : size); // width (0 = 256)
+      view.setUint8(entry + 1,  size >= 256 ? 0 : size); // height
+      view.setUint8(entry + 2,  0);    // color count
+      view.setUint8(entry + 3,  0);    // reserved
+      view.setUint16(entry + 4, 1, true); // color planes
+      view.setUint16(entry + 6, 32, true); // bits per pixel
+      view.setUint32(entry + 8,  pngLen, true); // size of image data
+      view.setUint32(entry + 12, offset, true);  // offset to image data
+
+      offset += pngLen;
+    }
+
+    // Write PNG data
+    let writeOffset = headerSize;
+    for (const pngBytes of pngBuffers) {
+      const dest = new Uint8Array(buf, writeOffset, pngBytes.length);
+      dest.set(pngBytes);
+      writeOffset += pngBytes.length;
+    }
+
+    return buf;
+  }
+
+  function dataURLtoBytes(dataURL) {
+    const base64 = dataURL.split(',')[1];
+    const binary = atob(base64);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+</script>
+</body>
+</html>
